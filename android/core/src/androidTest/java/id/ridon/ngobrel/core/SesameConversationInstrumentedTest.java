@@ -345,6 +345,19 @@ public class SesameConversationInstrumentedTest {
     // and collect it by it's device id
     serverBundles.put(BobUserId, bobBundlePublicCollection);
 
+    // Alice wants to send a message to Bob, so she need to reinitialize conversation
+    // She downloads Bob's public bundle
+    // First, the server prepares it first and make it ready to be downloaded
+    serverAliceBundlePublicCollection = serverBundles.get(BobUserId);
+    download = serverAliceBundlePublicCollection.encode();
+
+    // Alice got Bob's bundle public
+    aliceBobBundlePublicCollection = BundlePublicCollection.decode(download);
+
+    // Alice starts a conversation with Bob
+    aliceConversation = new SesameConversation(AliceUserId, aliceDevice.id, aliceDevice.getBundle(), BobUserId, aliceBobBundlePublicCollection);
+    aliceConversation.initializeSender();
+
     // Bob from device 2 not have any messages
     download = serverFetchEncrypted(bobDevice2.id);
     Assert.assertEquals(download, null);
@@ -358,7 +371,24 @@ public class SesameConversationInstrumentedTest {
 
     // Bob from device 1 downloads all the messages
     download = serverFetchEncrypted(bobDevice1.id);
-    // But this is fail, invalid key, so after bob adding new device, old device cannot be used anymore?
+    // But this is fail, invalid key, so after bob adding new device, old device cannot be used anymore
+    try {
+      decrypted = bobConversation1.decrypt(download);
+    } catch (Exception e) {
+      Assert.assertEquals(e instanceof InvalidKeyException, true);
+    }
+
+    // Bob from device 1 need to reinitialize conversation too
+    serverBobBundlePublicCollection = serverBundles.get(AliceUserId);
+    download = serverBobBundlePublicCollection.encode();
+
+    bobAliceBundlePublicCollection = BundlePublicCollection.decode(download);
+
+    bobConversation1 = new SesameConversation(BobUserId, bobDevice1.id, bobDevice1.getBundle(), AliceUserId, bobAliceBundlePublicCollection);
+
+    // Bob from device 1 downloads all the messages
+    // This is return null, so Bob from device 1 now did not received the message?
+    download = serverFetchEncrypted(bobDevice1.id);
     decrypted = bobConversation1.decrypt(download);
     Assert.assertEquals(Arrays.equals(decrypted, message.getBytes()), true);
 
@@ -373,7 +403,6 @@ public class SesameConversationInstrumentedTest {
     SesameConversation bobConversation2 = new SesameConversation(BobUserId, bobDevice2.id, bobDevice2.getBundle(), AliceUserId, bobAliceBundlePublicCollection);
 
     // Bob from device 2 downloads all the messages
-    // This is return null, so Bob from device 2 still did not received the message?
     download = serverFetchEncrypted(bobDevice2.id);
     decrypted = bobConversation2.decrypt(download);
     Assert.assertEquals(Arrays.equals(decrypted, message.getBytes()), true);
