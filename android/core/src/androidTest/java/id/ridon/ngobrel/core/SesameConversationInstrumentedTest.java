@@ -369,14 +369,14 @@ public class SesameConversationInstrumentedTest {
     // And uploads to server
     serverPutToMailbox(encrypted);
 
-    // Bob from device 1 downloads all the messages
+    /*// Bob from device 1 downloads all the messages
     download = serverFetchEncrypted(bobDevice1.id);
     // But this is fail, invalid key, so after bob adding new device, old device cannot be used anymore
     try {
       decrypted = bobConversation1.decrypt(download);
     } catch (Exception e) {
       Assert.assertEquals(e instanceof InvalidKeyException, true);
-    }
+    }*/
 
     // Bob from device 1 need to reinitialize conversation too
     serverBobBundlePublicCollection = serverBundles.get(AliceUserId);
