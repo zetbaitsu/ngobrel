@@ -387,8 +387,8 @@ public class SesameConversationInstrumentedTest {
     bobConversation1 = new SesameConversation(BobUserId, bobDevice1.id, bobDevice1.getBundle(), AliceUserId, bobAliceBundlePublicCollection);
 
     // Bob from device 1 downloads all the messages
-    // This is return null, so Bob from device 1 now did not received the message?
     download = serverFetchEncrypted(bobDevice1.id);
+    // Got id.ridon.ngobrel.core.AuthenticationException
     decrypted = bobConversation1.decrypt(download);
     Assert.assertEquals(Arrays.equals(decrypted, message.getBytes()), true);
 
