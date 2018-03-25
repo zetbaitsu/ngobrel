@@ -164,6 +164,88 @@ public class SesameConversationInstrumentedTest {
   }
 
   @Test
+  public void testEncryptDecryptMultipleMessage() throws Exception {
+
+    // Alice got a device
+    SesameSenderDevice aliceDevice = new SesameSenderDevice(new HashId(AliceDeviceId1.getBytes()), AliceUserId);
+
+    // Alice uploads her bundle
+    byte[] aliceBundlePublicRaw = aliceDevice.getBundle().bundlePublic.encode();
+
+    // She sents the AliceDeviceId1 and the above raw data
+    // Server keeps it
+    // according to the device and user
+    BundlePublicCollection aliceBundlePublicCollection = new BundlePublicCollection(new HashId(AliceDeviceId1.getBytes()), BundlePublic.decode(aliceBundlePublicRaw));
+    serverBundles.put(AliceUserId, aliceBundlePublicCollection);
+
+    // Bob also has a device
+    SesameSenderDevice bobDevice = new SesameSenderDevice(new HashId(BobDeviceId1.getBytes()), BobUserId);
+
+    // and uploads his
+    byte[] bobBundlePublicRaw = bobDevice.getBundle().bundlePublic.encode();
+
+    // Server then gets it
+    // and collect it by it's device id
+    BundlePublicCollection bobBundlePublicCollection = new BundlePublicCollection(new HashId(BobDeviceId1.getBytes()), BundlePublic.decode(bobBundlePublicRaw));
+    serverBundles.put(BobUserId, bobBundlePublicCollection);
+
+    // Alice wants to send a message to Bob
+    // She downloads Bob's public bundle
+    // First, the server prepares it first and make it ready to be downloaded
+    BundlePublicCollection serverAliceBundlePublicCollection = serverBundles.get(BobUserId);
+    byte[] download = serverAliceBundlePublicCollection.encode();
+
+    // Alice got Bob's bundle public
+    BundlePublicCollection aliceBobBundlePublicCollection = BundlePublicCollection.decode(download);
+
+    // Alice starts a conversation with Bob
+    SesameConversation aliceConversation = new SesameConversation(AliceUserId, aliceDevice.id, aliceDevice.getBundle(), BobUserId, aliceBobBundlePublicCollection);
+    aliceConversation.initializeSender();
+
+    String message1 = "alice-msg1";
+
+    byte[] decrypted;
+    byte[] encrypted = aliceConversation.encrypt(message1.getBytes());
+
+    // The encrypted text is uploaded to server. Server then puts it in a mailbox
+    serverPutToMailbox(encrypted);
+
+    String message2 = "alice-msg2";
+    encrypted = aliceConversation.encrypt(message2.getBytes());
+
+    // The encrypted text is uploaded to server. Server then puts it in a mailbox
+    serverPutToMailbox(encrypted);
+
+    // Server then -- in some way -- tells Bob that he has an incoming message
+    // Bob then initiates a conversation on his side
+    // He does that by downloading Alice's bundle
+    BundlePublicCollection serverBobBundlePublicCollection = serverBundles.get(AliceUserId);
+    download = serverBobBundlePublicCollection.encode();
+
+    BundlePublicCollection bobAliceBundlePublicCollection = BundlePublicCollection.decode(download);
+
+    SesameConversation bobConversation = new SesameConversation(BobUserId, bobDevice.id, bobDevice.getBundle(), AliceUserId, bobAliceBundlePublicCollection);
+
+    // Bob downloads all the messages from bobDevice.id
+    int count = 0;
+    while (true) {
+      download = serverFetchEncrypted(bobDevice.id);
+      if (download == null) {
+        break;
+      }
+
+      // Got java.security.InvalidKeyException
+      decrypted = bobConversation.decrypt(download);
+      if (count == 0) {
+        Assert.assertEquals(Arrays.equals(decrypted, message1.getBytes()), true);
+      } else {
+        Assert.assertEquals(Arrays.equals(decrypted, message2.getBytes()), true);
+      }
+      count++;
+    }
+  }
+
+  @Test
   public void testEncryptDecryptMultipleDevice() throws Exception {
 
     // Alice got a device
