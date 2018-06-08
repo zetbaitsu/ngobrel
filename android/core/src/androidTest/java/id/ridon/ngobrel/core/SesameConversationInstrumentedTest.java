@@ -544,6 +544,69 @@ public class SesameConversationInstrumentedTest {
   }
 
   @Test
+  public void addNewDeviceAndImmediatelySendMessage() throws Exception {
+    // Alice device
+    SesameSenderDevice aliceDevice = new SesameSenderDevice(AliceDeviceId1, AliceUserId);
+    BundlePublicCollection aliceBundlePublicCollection = new BundlePublicCollection(AliceDeviceId1, aliceDevice.bundle.bundlePublic);
+
+    // Bob device 1
+    SesameSenderDevice bobDevice1 = new SesameSenderDevice(BobDeviceId1, BobUserId);
+    BundlePublicCollection bobBundlePublicCollection = new BundlePublicCollection(BobDeviceId1, bobDevice1.bundle.bundlePublic);
+
+    // Alice send message
+    SesameConversation aliceConversation = new SesameConversation(AliceUserId, aliceDevice.id, aliceDevice.bundle, BobUserId, bobBundlePublicCollection);
+    aliceConversation.initializeSender();
+    String aliceMessage1 = "Halo bob!";
+    byte[] encrypted = aliceConversation.encrypt(aliceMessage1.getBytes());
+
+    // Bob got message
+    SesameConversation bobConversation1 = new SesameConversation(BobUserId, bobDevice1.id, bobDevice1.bundle, AliceUserId, aliceBundlePublicCollection);
+    byte[] decrypted = bobConversation1.decrypt(unpackData(bobDevice1.id, encrypted));
+    Assert.assertEquals(Arrays.equals(decrypted, aliceMessage1.getBytes()), true);
+
+    // Bob replies
+    String bobMessage1 = "Halo alice!";
+    encrypted = bobConversation1.encrypt(bobMessage1.getBytes());
+
+    // Alice got message
+    decrypted = aliceConversation.decrypt(unpackData(aliceDevice.id, encrypted));
+    Assert.assertEquals(Arrays.equals(decrypted, bobMessage1.getBytes()), true);
+
+    // Bob adding new device and send a message
+    SesameSenderDevice bobDevice2 = new SesameSenderDevice(BobDeviceId2, BobUserId);
+    bobBundlePublicCollection.put(bobDevice2.id, bobDevice2.bundle.bundlePublic);
+    SesameConversation bobConversation2 = new SesameConversation(BobUserId, bobDevice2.id, bobDevice2.bundle, AliceUserId, aliceBundlePublicCollection);
+    bobConversation2.initializeSender();
+    String bobMessage2 = "Hey I have new phone";
+    encrypted = bobConversation2.encrypt(bobMessage2.getBytes());
+
+    // Alice got message
+    // She noticed that bob has changed bundle public collection
+    // So she create new conversation
+    aliceConversation = new SesameConversation(AliceUserId, aliceDevice.id, aliceDevice.bundle, BobUserId, bobBundlePublicCollection);
+    decrypted = aliceConversation.decrypt(unpackData(aliceDevice.id, encrypted));
+    Assert.assertEquals(Arrays.equals(decrypted, bobMessage2.getBytes()), true);
+
+    // Alice replies
+    String aliceMessage2 = "Wow that's great!!";
+    encrypted = aliceConversation.encrypt(aliceMessage2.getBytes());
+
+    // Bob 1 got message
+    // He noticed that his bundle public collection was changed
+    // So he create new conversation
+    bobConversation1 = new SesameConversation(BobUserId, bobDevice1.id, bobDevice1.bundle, AliceUserId, aliceBundlePublicCollection);
+    // But he got null when trying unpack data
+    // Data is not contain message for hash id bob 1
+    // Data only have message for hash id bob 2
+    decrypted = bobConversation1.decrypt(unpackData(bobDevice1.id, encrypted));
+    Assert.assertEquals(Arrays.equals(decrypted, aliceMessage2.getBytes()), true);
+
+    // Bob 2 got message too
+    decrypted = bobConversation2.decrypt(unpackData(bobDevice2.id, encrypted));
+    Assert.assertEquals(Arrays.equals(decrypted, aliceMessage2.getBytes()), true);
+  }
+
+  @Test
   public void testMedia() throws Exception {
     mailBoxes = new HashMap<>();
 
