@@ -495,6 +495,7 @@ public class SesameConversationInstrumentedTest {
 
     // Alice 2 got message too
     SesameConversation aliceConversation2 = new SesameConversation(AliceUserId, aliceDevice2.id, aliceDevice2.bundle, BobUserId, bobBundlePublicCollection);
+    // Can not unpack data, there is no message for alice device 2 hash id (null)
     decrypted = aliceConversation2.decrypt(unpackData(aliceDevice2.id, encrypted));
     Assert.assertEquals(Arrays.equals(decrypted, bobMessage1.getBytes()), true);
 
